@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       String @id @default(uuid())
+  username String @unique
+  email    String @unique
+  password String
+  organisationsAdmin Organisation[]   @relation("OrgAdmin")
+  memberships        Membership[]
+  issueMappings       IssueMapping[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Organisation {
+  id          String @id @default(uuid())
+  username    String @unique
+  description String
+
+  adminId String
+  admin   User   @relation("OrgAdmin", fields: [adminId], references: [id])
+
+  memberships Membership[]
+  boards      Board[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  orgId String
+  org   Organisation @relation(fields: [orgId], references: [id])
+
+  role Role @default(MEMBER)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, orgId]) 
+}
+
+model Board {
+  id    String @id @default(uuid())
+  title String
+
+  orgId String
+  org   Organisation @relation(fields: [orgId], references: [id])
+
+  sections Section[]
+  issues   Issue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Section {
+  id    String @id @default(uuid())
+  title String
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
+
+  issues Issue[]
+
+  createdAt DateTime @default(now())
+}
+
+model Issue {
+  id          String @id @default(uuid())
+  title       String
+  description String
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
+
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id])
+
+  issueMappings IssueMapping[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IssueMapping {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  issueId String
+  issue   Issue  @relation(fields: [issueId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, issueId]) 
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}

@@ -1,30 +1,61 @@
-import { APITester } from "./APITester";
+import { BrowserRouter, Route, Routes, useParams } from "react-router";
 import "./index.css";
-
-import logo from "./logo.svg";
-import reactLogo from "./react.svg";
+import { useEffect, useState } from "react";
 
 export function App() {
   return (
-    <div className="max-w-7xl mx-auto p-8 text-center relative z-10">
-      <div className="flex justify-center items-center gap-8 mb-8">
-        <img
-          src={logo}
-          alt="Bun Logo"
-          className="h-24 p-6 transition-all duration-300 hover:drop-shadow-[0_0_2em_#646cffaa] scale-120"
-        />
-        <img
-          src={reactLogo}
-          alt="React Logo"
-          className="h-24 p-6 transition-all duration-300 hover:drop-shadow-[0_0_2em_#61dafbaa] animate-[spin_20s_linear_infinite]"
-        />
-      </div>
+    <div className="app">
+      <BrowserRouter>
+        <Routes>
+          <Route path="/board/:boardId" element={<Board />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
+}
 
-      <h1 className="text-5xl font-bold my-4 leading-tight">Bun + React</h1>
-      <p>
-        Edit <code className="bg-[#1a1a1a] px-2 py-1 rounded font-mono">src/App.tsx</code> and save to test HMR
-      </p>
-      <APITester />
+function Board() {
+  const { boardId } = useParams();
+  const [users, setUsers] = useState<Array<{ id: string | number }>>([]);
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:3002");
+
+    ws.onmessage = ev => {
+      const data = JSON.parse(ev.data) as {
+        type?: string;
+        users?: Array<{ id: string | number }>;
+        userId?: string | number;
+      };
+
+      if (data.type === "initial_state") {
+        setUsers(data.users ?? []);
+      }
+
+      if (data.type === "join") {
+        setUsers(currentUsers => [...currentUsers, { id: data.userId ?? "unknown" }]);
+      }
+
+      if (data.type === "leave") {
+        setUsers(currentUsers => currentUsers.filter(user => user.id !== data.userId));
+      }
+    };
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        type: "join",
+        boardId: boardId
+      }))
+    }
+
+    return () => ws.close();
+  }, []);
+
+  return (
+    <div>
+      You are on board {boardId}
+      <br />
+      Currently active users - {JSON.stringify(users)}
     </div>
   );
 }

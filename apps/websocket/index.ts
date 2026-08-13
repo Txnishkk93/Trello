@@ -1,51 +1,87 @@
-import { Socket } from "node:dgram";
-import { join } from "node:path";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, type WebSocket } from "ws";
 
 const server = new WebSocketServer({ port: 3002 });
 
-const ROOMS: any = {
+type UserConnection = {
+  id: string;
+  socket: WebSocket;
+};
 
-}
+const ROOMS: Record<string, UserConnection[]> = {};
 
-server.on("connection", (Socket) => {
-    let joinedRoom = null;
-    Socket.on("message", (data) => {
-        const parsedData = JSON.parse(data);
-        if (parsedData.type == "join") {
-            joinedRoom = boardId;
-            const boardId = parsedData.boardId;
-            if (!ROOMS[boardId]) {
-                ROOMS[boardId] = [];
-            }
-            const newUserId = Math.random();
-            ROOMS[boardId].push({ userId: Math.random(), Socket: Socket })
+server.on("connection", socket => {
+  let currentRoomId: string | null = null;
+  let currentUserId: string | null = null;
 
-            for (let i = 0; i < ROOMS[boardId].length; i++) {
-                const user = ROOMS[boardId][i];
-                user.Socket.send(JSON.stringify({
-                    type: "join",
-                    userId: newUserId,
-                }))
-            }
+  socket.on("message", rawData => {
+    let parsedData: { type?: string; boardId?: string };
 
-            Socket.send(JSON.stringify({
-                type: "intial_state",
-                users: ROOMS.filter(x => x.id != newUserId).map(u => u.id)
-            }))
-        }
-    })
-})
+    try {
+      parsedData = JSON.parse(rawData.toString()) as { type?: string; boardId?: string };
+    } catch (error) {
+      console.warn("Ignoring non-JSON websocket message:", rawData.toString());
+      return;
+    }
 
-Socket.on("close", () => {
-    Object.entries(ROOMS).map(([roomId, users]) => {
-        const userExits = users.find(u => u.socket == socket);
-        if (userExits) {
-            users = users.filter(x => x.socket == socket);
-            users.forEach(({ socket }) => socket.send(JSON.stringify({
-                type: "leave",
-                userId: userExits.id,
-            })))
-        }
-    })
-})
+    if (parsedData.type !== "join" || !parsedData.boardId) {
+      return;
+    }
+
+    currentRoomId = parsedData.boardId;
+
+    if (!ROOMS[currentRoomId]) {
+      ROOMS[currentRoomId] = [];
+    }
+
+    const roomUsers = ROOMS[currentRoomId]!;
+    currentUserId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const newUser = { id: currentUserId, socket };
+
+    roomUsers.push(newUser);
+
+    for (const user of roomUsers) {
+      if (user.id === currentUserId) continue;
+
+      user.socket.send(
+        JSON.stringify({
+          type: "join",
+          userId: currentUserId,
+        }),
+      );
+    }
+
+    socket.send(
+      JSON.stringify({
+        type: "initial_state",
+        users: roomUsers
+          .filter(user => user.id !== currentUserId)
+          .map(user => ({ id: user.id })),
+      }),
+    );
+  });
+
+  socket.on("close", () => {
+    if (!currentRoomId || !currentUserId) return;
+
+    const roomUsers = ROOMS[currentRoomId] ?? [];
+    const remainingUsers = roomUsers.filter(user => user.id !== currentUserId);
+
+    if (remainingUsers.length === 0) {
+      delete ROOMS[currentRoomId];
+      return;
+    }
+
+    ROOMS[currentRoomId] = remainingUsers;
+
+    for (const user of remainingUsers) {
+      user.socket.send(
+        JSON.stringify({
+          type: "leave",
+          userId: currentUserId,
+        }),
+      );
+    }
+  });
+});
+
+console.log("WebSocket server running on ws://localhost:3002");

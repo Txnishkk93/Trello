@@ -1,23 +1,28 @@
 {
-  "name": "bun-react-template",
-  "version": "0.1.0",
+  "name": "workflow-frontend",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/index.ts",
-    "start": "NODE_ENV=production bun src/index.ts",
-    "build": "bun run build.ts"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "bun-plugin-tailwind": "^0.1.2",
-    "react": "^19",
-    "react-dom": "^19",
-    "react-router": "^8.3.0",
-    "tailwindcss": "^4.1.11"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "6.30.4",
+    "lucide-react": "0.383.0"
   },
   "devDependencies": {
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/bun": "latest"
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "4.7.0",
+    "autoprefixer": "10.4.20",
+    "bun-types": "1.1.27",
+    "postcss": "8.4.45",
+    "tailwindcss": "3.4.10",
+    "typescript": "5.9.2",
+    "vite": "5.4.10"
   }
 }

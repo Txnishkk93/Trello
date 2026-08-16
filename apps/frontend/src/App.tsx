@@ -1,63 +1,49 @@
-import { BrowserRouter, Route, Routes, useParams } from "react-router";
-import "./index.css";
-import { useEffect, useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { Login } from "./pages/Login";
+import { Signup } from "./pages/Signup";
+import { Organizations } from "./pages/Organizations";
+import { Boards } from "./pages/Boards";
+import { BoardDetail } from "./pages/BoardDetail";
+import { IssueDetail } from "./pages/IssueDetail";
+import { OrgMembers } from "./pages/OrgMembers";
+import { AppLayout } from "./components/layout/AppLayout";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { LandingPage } from "./pages/LandingPage";
 
-export function App() {
+export default function App() {
   return (
-    <div className="app">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/board/:boardId" element={<Board />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/orgs" element={<Organizations />} />
+        <Route path="/orgs/:orgId/members" element={<OrgMembers />} />
+        <Route path="/orgs/:orgId/boards" element={<Boards />} />
+        <Route path="/orgs/:orgId/boards/:boardId" element={<BoardDetail />} />
+        <Route path="/orgs/:orgId/boards/:boardId/issues/:issueId" element={<IssueDetail />} />
+      </Route>
+
+      <Route path="/dashboard" element={<Navigate to="/orgs" replace />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
-function Board() {
-  const { boardId } = useParams();
-  const [users, setUsers] = useState<Array<{ id: string | number }>>([]);
-
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3002");
-
-    ws.onmessage = ev => {
-      const data = JSON.parse(ev.data) as {
-        type?: string;
-        users?: Array<{ id: string | number }>;
-        userId?: string | number;
-      };
-
-      if (data.type === "initial_state") {
-        setUsers(data.users ?? []);
-      }
-
-      if (data.type === "join") {
-        setUsers(currentUsers => [...currentUsers, { id: data.userId ?? "unknown" }]);
-      }
-
-      if (data.type === "leave") {
-        setUsers(currentUsers => currentUsers.filter(user => user.id !== data.userId));
-      }
-    };
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        type: "join",
-        boardId: boardId
-      }))
-    }
-
-    return () => ws.close();
-  }, []);
-
+function NotFound() {
   return (
-    <div>
-      You are on board {boardId}
-      <br />
-      Currently active users - {JSON.stringify(users)}
+    <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-canvas text-ink">
+      <p className="text-sm font-medium">Page not found</p>
+      <a href="/" className="text-xs text-ink2 hover:underline">
+        Go back home
+      </a>
     </div>
   );
 }
-
-export default App;

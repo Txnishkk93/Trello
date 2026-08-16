@@ -1,4 +1,6 @@
+[install]
+# Use the default npm registry
+registry = "https://registry.npmjs.org"
 
-[serve.static]
-plugins = ["bun-plugin-tailwind"]
-env = "BUN_PUBLIC_*"
+[install.cache]
+disable = false
